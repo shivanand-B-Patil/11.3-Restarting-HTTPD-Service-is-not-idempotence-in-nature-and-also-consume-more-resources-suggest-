@@ -1,0 +1,64 @@
+- hosts: all
+  vars:
+  - doc_root: "/var/www/lw"
+  - port: "8080" 
+  tasks:
+  - debug:
+      msg: "{{ ansible_facts['default_ipv4']['address'] }}"
+  
+  - file:
+      path: "/dvd1"
+      state: directory
+
+  - mount:
+      src: "/dev/sr0"
+      path: "/dvd1"
+      state: mounted
+      fstype: "iso9660"
+
+  - yum_repository:
+      baseurl: "/dvd1/AppStream"
+      name: "mydvd1"
+      description: "yum AppStream"
+      gpgcheck: no
+
+  - yum_repository:
+      baseurl: "/dvd1/BaseOS"
+      name: "mydvd2"
+      description: "yum BaseOS"
+      gpgcheck: no
+    
+  - package:
+      name: "httpd"
+      state: present
+
+  - file:
+      state: directory
+      path: "{{ doc_root }}"
+
+  - template:
+      src: "web.conf"  
+      dest: "/etc/httpd/conf.d/web.conf"
+
+  - copy:
+      content: "Configured by ansible"
+      dest: "{{ doc_root }}/my.html"
+    register: cpy
+  
+  - debug:
+      msg: "{{ cpy['changed'] }}"
+
+  - firewalld:
+      port: "8080/tcp"
+      state: enabled
+      permanent: yes
+      immediate: yes 
+
+  - service:
+      name: "httpd"
+      state: restarted
+    when: cpy.changed == true
+
+   
+  
+
